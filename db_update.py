@@ -1,15 +1,30 @@
 import sys
+import os
 import requests
 import openpyxl
 import argparse
+import re
+
+STATUSES = {
+    'Отправлено письмо': 'Contacted',
+    'Интервью с HR': 'HR interview',
+    'Выставлен оффер': 'Offered',
+    'Отказ': 'Declined'
+}
 
 API_ENDPOINT = 'https://dev-100-api.huntflow.ru'
+
+DBFILE = 'Тестовая база.xlsx'
 
 # handle external arguments
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--token', '-t', required = True)
 argparser.add_argument('--path', '-p', required = True)
-ARGS = argparser.parse_args()
+
+try:
+    ARGS = argparser.parse_args()
+except:
+    ARGS = argparser.parse_args(r'--path C:\repos\HuntFlowTest\test -t 71e89e8af02206575b3b4ae80bf35b6386fe3085af3d4085cbc7b43505084482'.split())
 
 
 class API:
@@ -66,18 +81,11 @@ class API:
 
 def load_candidates_data(path):
 
-    statuses_ru_to_api = {
-            'Отправлено письмо': 'Contacted',
-            'Интервью с HR': 'HR interview',
-            'Выставлен оффер': 'Offered',
-            'Отказ': 'Declined'
-        }
-
     field_names = {'position':1, 'name':2, 'money':3, 'comment':4, 'status_name':5}
-
     data = []
-
-    wb = openpyxl.load_workbook(fr'{path}')
+    path = fr'{path}'
+    xl_path = os.path.join(path, DBFILE)
+    wb = openpyxl.load_workbook(xl_path)
     ws = wb.active
     row = 2
     cell_val = ws.cell(row, 1).value
@@ -90,21 +98,42 @@ def load_candidates_data(path):
         cand_data['money'] = ws.cell(row, field_names['money']).value
         cand_data['comment'] = ws.cell(row, field_names['comment']).value
         cand_data['status_name'] = ws.cell(row, field_names['status_name']).value
-        name = ws.cell(row, field_names['name']).value.split()
-        cand_data['first_name'] = name[0]
-        cand_data['second_name'] = name[1]
-        cand_data['middle_name'] = name[2] if len(name) == 3 else ''
+        name = ws.cell(row, field_names['name']).value
+        name_list = name.split()
+        cand_data['first_name'] = name_list[0]
+        cand_data['second_name'] = name_list[1]
+        cand_data['middle_name'] = name_list[2] if len(name_list) == 3 else ''
+        # add resume file path if exists
+        file_path = get_resume_local_path(path, name, cand_data['position'])
+        cand_data['local_file'] = file_path
 
         data.append(cand_data)
         row += 1
         cell_val = ws.cell(row, 1).value
 
-
     return data
 
-def get_files_paths(data):
+def get_resume_local_path(db_path, name, position):
 
-    pass
+    files_path = os.path.join(db_path, position)
+    
+    files = os.listdir(files_path)
+
+    # fix wrong 'й' encoding
+    files = [re.sub(b'\xd0\xb8\xcc\x86'.decode('utf8'), 'й', f) for f in files]
+
+    resume_path = None
+
+    for f in files:
+
+        if name.strip() in f.strip():
+
+            resume_path = os.path.join(files_path, f)
+
+            break 
+
+    return resume_path
+
 
 if __name__ == "__main__":
 
