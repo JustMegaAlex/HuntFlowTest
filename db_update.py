@@ -11,6 +11,14 @@ argparser.add_argument('--token', '-t', required = True)
 argparser.add_argument('--path', '-p', required = True)
 ARGS = argparser.parse_args()
 
+
+class API:
+
+    def __init__(self, token):
+
+        self.authtoken = token
+        
+
 def load_candidates_data(path):
 
     field_names = {'position':1, 'name':2, 'money':3, 'comment':4, 'status_name':5}
@@ -46,4 +54,4 @@ if __name__ == "__main__":
 
     data = load_candidates_data(ARGS.path)
 
-    print(data)
+    
