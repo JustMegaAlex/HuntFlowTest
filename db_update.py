@@ -61,7 +61,13 @@ class API:
 
         return r.json()
 
+    def add_candidate(self, data):
 
+        pass
+
+    def upload_resume(self, localpath):
+
+        pass
 
 
 def load_candidates_data(path):
