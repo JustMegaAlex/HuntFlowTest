@@ -17,7 +17,52 @@ class API:
     def __init__(self, token):
 
         self.authtoken = token
-        
+        self.headers = {'Authorization':f'Bearer {self.authtoken}'}
+        self.account_id = 6
+        self.vacancies_ids = {}
+        self.statuses_ids = {}
+        self.statuses_ru_to_api = {
+            'Отправлено письмо': 'Contacted',
+            'Интервью с HR': 'HR interview',
+            'Выставлен оффер': 'Offered',
+            'Отказ': 'Declined'
+        }
+
+        vacancies = self.__send__(api_method = 'vacancies')['items']
+
+        for item in vacancies:
+
+            self.vacancies_ids.update({item['position']:item['id']})
+
+        statuses = self.__send__(api_method = 'vacancy/statuses')['items']
+
+        for item in statuses:
+
+            self.statuses_ids.update({item['name']:item['id']})
+
+    def __send__(self, api_method, method = 'get', extraheaders = None):
+
+        if method == 'get':
+            method = requests.get
+        elif method == 'post':
+            method = requests.post
+        elif method == 'put':
+            method = requests.put
+
+        headers = self.headers.copy()
+
+        if extraheaders:
+
+            headers.update(extraheaders)
+
+        r = method(f'{API_ENDPOINT}/account/{self.account_id}/{api_method}', headers = headers)
+
+        r.raise_for_status()
+
+        return r.json()
+
+
+
 
 def load_candidates_data(path):
 
@@ -54,4 +99,4 @@ if __name__ == "__main__":
 
     data = load_candidates_data(ARGS.path)
 
-    
+    api = API(ARGS.token)
