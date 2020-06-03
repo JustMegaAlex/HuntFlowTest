@@ -21,12 +21,6 @@ class API:
         self.account_id = 6
         self.vacancies_ids = {}
         self.statuses_ids = {}
-        self.statuses_ru_to_api = {
-            'Отправлено письмо': 'Contacted',
-            'Интервью с HR': 'HR interview',
-            'Выставлен оффер': 'Offered',
-            'Отказ': 'Declined'
-        }
 
         vacancies = self.__send__(api_method = 'vacancies')['items']
 
@@ -72,6 +66,13 @@ class API:
 
 def load_candidates_data(path):
 
+    statuses_ru_to_api = {
+            'Отправлено письмо': 'Contacted',
+            'Интервью с HR': 'HR interview',
+            'Выставлен оффер': 'Offered',
+            'Отказ': 'Declined'
+        }
+
     field_names = {'position':1, 'name':2, 'money':3, 'comment':4, 'status_name':5}
 
     data = []
@@ -100,6 +101,10 @@ def load_candidates_data(path):
 
 
     return data
+
+def get_files_paths(data):
+
+    pass
 
 if __name__ == "__main__":
 
