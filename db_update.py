@@ -4,8 +4,30 @@ import requests
 import openpyxl
 import argparse
 import re
+import shutil
+import filetype
+import mimetypes
 
-STATUSES = {
+ADD_CANDIDATE_FIELDS = [
+    'last_name', 
+    'first_name', 
+    'middle_name', 
+    'phone',
+    'email',
+    'position',
+    'company',
+    'money',
+    'birthday_day',
+    'birthday_month',
+    'birthday_year',
+    'photo'
+]
+
+UPLOAD_HEADERS = {
+    'X-File-Parse': 'true'
+}
+
+STATUSES_MAPPING = {
     'Отправлено письмо': 'Contacted',
     'Интервью с HR': 'HR interview',
     'Выставлен оффер': 'Offered',
@@ -37,19 +59,19 @@ class API:
         self.vacancies_ids = {}
         self.statuses_ids = {}
 
-        vacancies = self.__send__(api_method = 'vacancies')['items']
+        vacancies = self.send(api_method = 'vacancies')['items']
 
         for item in vacancies:
 
             self.vacancies_ids.update({item['position']:item['id']})
 
-        statuses = self.__send__(api_method = 'vacancy/statuses')['items']
+        statuses = self.send(api_method = 'vacancy/statuses')['items']
 
         for item in statuses:
 
             self.statuses_ids.update({item['name']:item['id']})
 
-    def __send__(self, api_method, method = 'get', extraheaders = None):
+    def send(self, api_method, method = 'get', extraheaders = None, files = None):
 
         if method == 'get':
             method = requests.get
@@ -62,21 +84,33 @@ class API:
 
         if extraheaders:
 
-            headers.update(extraheaders)
+            for h in extraheaders:
+                
+                headers.update(h)
 
-        r = method(f'{API_ENDPOINT}/account/{self.account_id}/{api_method}', headers = headers)
+        r = method(f'{API_ENDPOINT}/account/{self.account_id}/{api_method}', headers = headers, files = files)
 
         r.raise_for_status()
 
         return r.json()
 
-    def add_candidate(self, data):
+    def add_candidate(self, candidate):
 
-        pass
+        file_path = candidate['local_file']
 
-    def upload_resume(self, localpath):
+        data = {}
 
-        pass
+    def upload_resume(self, file_path):
+
+        file_name = os.path.split(file_path)[1]
+
+        file_type = mimetypes.guess_type(file_path)[0]
+
+        with open(file_path, 'rb') as f:
+
+            data = self.send('upload', method = 'post', extraheaders = [UPLOAD_HEADERS], files = {'file':(file_name, f, file_type)})
+
+        return data
 
 
 def load_candidates_data(path):
@@ -119,24 +153,30 @@ def get_resume_local_path(db_path, name, position):
     
     files = os.listdir(files_path)
 
-    # fix wrong 'й' encoding
-    files = [re.sub(b'\xd0\xb8\xcc\x86'.decode('utf8'), 'й', f) for f in files]
-
     resume_path = None
 
     for f in files:
 
-        if name.strip() in f.strip():
+        # fix wrong 'й' encoding
+        f_check = re.sub(b'\xd0\xb8\xcc\x86'.decode('utf8'), 'й', f)
+
+        if name.strip() in f_check.strip():
 
             resume_path = os.path.join(files_path, f)
 
-            break 
+            break
 
     return resume_path
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
 
     data = load_candidates_data(ARGS.path)
 
     api = API(ARGS.token)
+
+    for cand in data:
+
+        data_from_file = api.upload_resume(cand['local_file'])
+
+        print(data_from_file)
