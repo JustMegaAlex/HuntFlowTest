@@ -17,7 +17,7 @@ def load_candidates_data(path):
 
     data = []
 
-    wb = openpyxl.load_workbook(path)
+    wb = openpyxl.load_workbook(fr'{path}')
     ws = wb.active
     row = 2
     cell_val = ws.cell(row, 1).value
