@@ -173,39 +173,25 @@ def get_resume_local_path(db_path, name, position):
 
     return resume_path
 
-def get_candidate_api_data(src_data):
+def create_cand_db_data(src_data):
+    
+    cand_data = {
+        'last_name': src_data['last_name'],
+        'first_name': src_data['first_name'],
+        'middle_name': src_data['middle_name'],
+        'phone': src_data['phone'],
+        'email': src_data['email'],
+        'position': src_data['position'],
+        'company': None,
+        'money': src_data['money'],
+        'birthday_day': src_data['birthday_day'],
+        'birthday_month': src_data['birthday_month'],
+        'birthday_year': src_data['birthday_year'],
+        'photo': src_data['photo'],
+        'externals': src_data['externals']
+    }
 
-    pass
-    # resume_text = 
-
-    # cand_data = {
-    #     'last_name': src_data.get(),
-    #     'first_name': src_data.get(),
-    #     'middle_name': src_data.get(),
-    #     'phone': src_data.get(),
-    #     'email': src_data.get(),
-    #     'position': src_data.get(),
-    #     'company': src_data.get(),
-    #     'money': src_data.get(),
-    #     'birthday_day': src_data.get(),
-    #     'birthday_month': src_data.get(),
-    #     'birthday_year': src_data.get(),
-    #     'photo': src_data.get(),
-    #     'externals': [
-    #         {
-    #             'data': {
-    #                 'body': 'Текст резюме\nТакой текст'
-    #             },
-    #             'auth_type': 'NATIVE',
-    #             'files': [
-    #                 {
-    #                     'id': 12430
-    #                 }
-    #             ],
-    #             'account_source': 208
-    #         }
-    #     ]
-    # }
+    return cand_data
 
 
 if __name__ == '__main__':
@@ -215,5 +201,31 @@ if __name__ == '__main__':
     for cand in data:
 
         data_from_file = api.upload_resume(cand['local_file'])
+        fields = data_from_file.get('fields')
+        birth_date = fields.get('birthdate')
+        phones = fields.get('phones')
+        phone_num = phones[0]
 
-        print(data_from_file)
+        externals = [{
+            'data': {
+                'body': data_from_file['text']
+            },
+            'auth_type': 'NATIVE',
+            'files': [
+                {
+                    'id': data_from_file['id']
+                }
+            ],
+            'account_source': None
+        }]
+
+        cand['resume_text'] = data_from_file.get('text')
+        cand['email'] = fields.get('email')
+        cand['birthday_day'] = birth_date.get('day')
+        cand['birthday_month'] = birth_date.get('month')
+        cand['birthday_year'] = birth_date.get('year')
+        cand['phone'] = phone_num
+        cand['photo'] = data_from_file.get('photo').get('id')
+        cand['externals'] = externals
+
+        cand = create_cand_db_data(cand)
