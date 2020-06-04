@@ -10,14 +10,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument('--token', '-t', required = True)
 argparser.add_argument('--path', '-p', required = True)
 
-try:
-    ARGS = argparser.parse_args()
-except:
-    with open('token.txt') as f:
-        token = f.read()
-    ARGS = argparser.parse_args(rf'--path C:\repos\HuntFlowTest\test -t {token}'.split())
-
-
+ARGS = argparser.parse_args()
 
 STATUSES_MAPPING = {
     'Отправлено письмо': 'Contacted',
@@ -35,6 +28,8 @@ api = API(ARGS.token)
 STATUSES_IDS_MAPPING = api.get_statuses_ids_mapping()
 
 VACANCIES_IDS_MAPPING = api.get_vacancies_ids_mapping()
+
+QUOTAS_IDS_MAPPING = api.get_vacancies_quotas_ids_mapping(VACANCIES_IDS_MAPPING.values())
 
 
 def load_candidates_data(path):
@@ -60,6 +55,7 @@ def load_candidates_data(path):
         file_path = get_resume_local_path(path, name, position)
 
         cand_data['position'] = position
+        cand_data['vacancy'] = VACANCIES_IDS_MAPPING[position]
         cand_data['money'] = ws.cell(row, field_names['money']).value
         cand_data['comment'] = ws.cell(row, field_names['comment']).value
         cand_data['status'] = STATUSES_IDS_MAPPING[status_api_name]
@@ -68,6 +64,8 @@ def load_candidates_data(path):
         cand_data['middle_name'] = name_list[2] if len(name_list) == 3 else ''
         # add resume file path if exists
         cand_data['local_file'] = file_path
+
+        cand_data['rejection_reason'] = cand_data['comment'] if status_api_name is 'Declined' else None
 
         data.append(cand_data)
         row += 1
@@ -111,8 +109,33 @@ def create_cand_db_data(src_data):
         'birthday_month': src_data['birthday_month'],
         'birthday_year': src_data['birthday_year'],
         'photo': src_data['photo'],
-        'externals': src_data['externals']
+        'externals': src_data['externals'],
+        # 'rejection_reason': src_data['rejection_reason'], # don't know where this should be taken from, couses 400 status code if send as string 
+        'vacancy': src_data['vacancy'],
+        'status': src_data['status'],
+        'comment': src_data['comment'],
     }
+
+    return cand_data
+
+def create_cand_vacancy_data(src_data):
+
+    cand_data = {
+        'id': src_data['id'],
+        'vacancy': src_data['vacancy'],
+        'status': src_data['status'],
+        'comment': src_data['comment'],
+        'files': [
+            {
+                'id': src_data['externals'][0]['files'][0]['id'],
+            }
+        ],
+        # 'rejection_reason': src_data['rejection_reason'],
+    }
+
+    if cand_data['status'] == STATUSES_IDS_MAPPING['Hired']:
+
+        cand_data['fill_quota'] = QUOTAS_IDS_MAPPING[src_data['vacancy']]
 
     return cand_data
 
@@ -154,6 +177,10 @@ if __name__ == '__main__':
 
         cand = create_cand_db_data(cand)
 
-        api_data = api.add_candidate(cand)
+        db_data = api.add_candidate(cand)
 
-        print(api_data)
+        cand.update({'id':db_data['id']})
+
+        vac_data = create_cand_vacancy_data(cand)
+
+        print('Applicant added to a vacancy:', api.add_vacancy_candidate(vac_data))

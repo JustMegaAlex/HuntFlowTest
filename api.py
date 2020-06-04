@@ -33,13 +33,27 @@ class API:
 
         vacancies_ids = {}
 
-        vacancies = self.send(api_method = 'vacancy/statuses')['items']
+        vacancies = self.send(api_method = 'vacancies')['items']
 
         for item in vacancies:
 
-            vacancies_ids.update({item['name']:item['id']})
+            vacancies_ids.update({item['position']:item['id']})
 
         return vacancies_ids
+
+    def get_vacancies_quotas_ids_mapping(self, vacancies):
+
+        quotas_ids_map = {}
+
+        for v_id in vacancies:
+
+            quota = self.send(api_method = f'vacancy/{v_id}/quotas')[str(v_id)]['items'][0]
+
+            q_id = quota['id']
+
+            quotas_ids_map.update({v_id:q_id})
+
+        return quotas_ids_map
 
     def send(self, api_method, method = 'get', extraheaders = None, files = None, json = None):
 
@@ -67,6 +81,14 @@ class API:
     def add_candidate(self, candidate):
 
         data = self.send(method = 'post', api_method = 'applicants', json = candidate)
+
+        return data
+
+    def add_vacancy_candidate(self, candidate):
+
+        cand_id = candidate['id']
+
+        data = self.send(method = 'post', api_method = f'applicants/{cand_id}/vacancy', json = candidate)
 
         return data
 
