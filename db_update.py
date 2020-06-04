@@ -8,20 +8,17 @@ import shutil
 import filetype
 import mimetypes
 
-ADD_CANDIDATE_FIELDS = [
-    'last_name', 
-    'first_name', 
-    'middle_name', 
-    'phone',
-    'email',
-    'position',
-    'company',
-    'money',
-    'birthday_day',
-    'birthday_month',
-    'birthday_year',
-    'photo'
-]
+# handle external arguments
+argparser = argparse.ArgumentParser()
+argparser.add_argument('--token', '-t', required = True)
+argparser.add_argument('--path', '-p', required = True)
+
+try:
+    ARGS = argparser.parse_args()
+except:
+    with open('token.txt') as f:
+        token = f.read()
+    ARGS = argparser.parse_args(rf'--path C:\repos\HuntFlowTest\test -t {token}'.split())
 
 UPLOAD_HEADERS = {
     'X-File-Parse': 'true'
@@ -38,19 +35,11 @@ API_ENDPOINT = 'https://dev-100-api.huntflow.ru'
 
 DBFILE = 'Тестовая база.xlsx'
 
-# handle external arguments
-argparser = argparse.ArgumentParser()
-argparser.add_argument('--token', '-t', required = True)
-argparser.add_argument('--path', '-p', required = True)
-
-try:
-    ARGS = argparser.parse_args()
-except:
-    with open('token.txt') as f:
-        token = f.read()
-    ARGS = argparser.parse_args(rf'--path C:\repos\HuntFlowTest\test -t {token}'.split())
-
 api = API(ARGS.token)
+
+STATUSES_IDS_MAPPING = api.get_statuses_ids_mapping()
+
+VACANCIES_IDS_MAPPING = api.get_vacancies_ids_mapping()
 
 class API:
 
@@ -59,20 +48,30 @@ class API:
         self.authtoken = token
         self.headers = {'Authorization':f'Bearer {self.authtoken}'}
         self.account_id = 6
-        self.vacancies_ids = {}
-        self.statuses_ids = {}
 
-        vacancies = self.send(api_method = 'vacancies')['items']
+    def get_statuses_ids_mapping(self):
 
-        for item in vacancies:
-
-            self.vacancies_ids.update({item['position']:item['id']})
+        statuses_ids = {}
 
         statuses = self.send(api_method = 'vacancy/statuses')['items']
 
         for item in statuses:
 
-            self.statuses_ids.update({item['name']:item['id']})
+            statuses_ids.update({item['name']:item['id']})
+
+        return statuses_ids
+
+    def get_vacancies_ids_mapping(self):
+
+        vacancies_ids = {}
+
+        vacancies = self.send(api_method = 'vacancy/statuses')['items']
+
+        for item in statuses:
+
+            vacancies_ids.update({item['position']:item['id']})
+
+        return vacancies_ids
 
     def send(self, api_method, method = 'get', extraheaders = None, files = None):
 
@@ -131,17 +130,20 @@ def load_candidates_data(path):
 
         cand_data = {}
 
+        status_name = ws.cell(row, field_names['status_name']).value
+        status_api_name = STATUSES_MAPPING[status_name]
+        name = ws.cell(row, field_names['name']).value
+        name_list = name.split()
+        file_path = get_resume_local_path(path, name, cand_data['position'])
+
         cand_data['position'] = ws.cell(row, field_names['position']).value
         cand_data['money'] = ws.cell(row, field_names['money']).value
         cand_data['comment'] = ws.cell(row, field_names['comment']).value
-        cand_data['status_name'] = ws.cell(row, field_names['status_name']).value
-        name = ws.cell(row, field_names['name']).value
-        name_list = name.split()
+        cand_data['status'] = STATUSES_IDS_MAPPING[status_api_name]
         cand_data['first_name'] = name_list[0]
         cand_data['second_name'] = name_list[1]
         cand_data['middle_name'] = name_list[2] if len(name_list) == 3 else ''
         # add resume file path if exists
-        file_path = get_resume_local_path(path, name, cand_data['position'])
         cand_data['local_file'] = file_path
 
         data.append(cand_data)
@@ -173,36 +175,37 @@ def get_resume_local_path(db_path, name, position):
 
 def get_candidate_api_data(src_data):
 
-    resume_text = 
+    pass
+    # resume_text = 
 
-    cand_data = {
-        'last_name': src_data.get(),
-        'first_name': src_data.get(),
-        'middle_name': src_data.get(),
-        'phone': src_data.get(),
-        'email': src_data.get(),
-        'position': src_data.get(),
-        'company': src_data.get(),
-        'money': src_data.get(),
-        'birthday_day': src_data.get(),
-        'birthday_month': src_data.get(),
-        'birthday_year': src_data.get(),
-        'photo': src_data.get(),
-        'externals': [
-            {
-                'data': {
-                    'body': 'Текст резюме\nТакой текст'
-                },
-                'auth_type': 'NATIVE',
-                'files': [
-                    {
-                        'id': 12430
-                    }
-                ],
-                'account_source': 208
-            }
-        ]
-    }
+    # cand_data = {
+    #     'last_name': src_data.get(),
+    #     'first_name': src_data.get(),
+    #     'middle_name': src_data.get(),
+    #     'phone': src_data.get(),
+    #     'email': src_data.get(),
+    #     'position': src_data.get(),
+    #     'company': src_data.get(),
+    #     'money': src_data.get(),
+    #     'birthday_day': src_data.get(),
+    #     'birthday_month': src_data.get(),
+    #     'birthday_year': src_data.get(),
+    #     'photo': src_data.get(),
+    #     'externals': [
+    #         {
+    #             'data': {
+    #                 'body': 'Текст резюме\nТакой текст'
+    #             },
+    #             'auth_type': 'NATIVE',
+    #             'files': [
+    #                 {
+    #                     'id': 12430
+    #                 }
+    #             ],
+    #             'account_source': 208
+    #         }
+    #     ]
+    # }
 
 
 if __name__ == '__main__':
