@@ -46,8 +46,11 @@ argparser.add_argument('--path', '-p', required = True)
 try:
     ARGS = argparser.parse_args()
 except:
-    ARGS = argparser.parse_args(r'--path C:\repos\HuntFlowTest\test -t 71e89e8af02206575b3b4ae80bf35b6386fe3085af3d4085cbc7b43505084482'.split())
+    with open('token.txt') as f:
+        token = f.read()
+    ARGS = argparser.parse_args(rf'--path C:\repos\HuntFlowTest\test -t {token}'.split())
 
+api = API(ARGS.token)
 
 class API:
 
@@ -168,12 +171,43 @@ def get_resume_local_path(db_path, name, position):
 
     return resume_path
 
+def get_candidate_api_data(src_data):
+
+    resume_text = 
+
+    cand_data = {
+        'last_name': src_data.get(),
+        'first_name': src_data.get(),
+        'middle_name': src_data.get(),
+        'phone': src_data.get(),
+        'email': src_data.get(),
+        'position': src_data.get(),
+        'company': src_data.get(),
+        'money': src_data.get(),
+        'birthday_day': src_data.get(),
+        'birthday_month': src_data.get(),
+        'birthday_year': src_data.get(),
+        'photo': src_data.get(),
+        'externals': [
+            {
+                'data': {
+                    'body': 'Текст резюме\nТакой текст'
+                },
+                'auth_type': 'NATIVE',
+                'files': [
+                    {
+                        'id': 12430
+                    }
+                ],
+                'account_source': 208
+            }
+        ]
+    }
+
 
 if __name__ == '__main__':
 
     data = load_candidates_data(ARGS.path)
-
-    api = API(ARGS.token)
 
     for cand in data:
 
