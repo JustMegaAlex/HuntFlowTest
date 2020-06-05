@@ -10,7 +10,7 @@ argparser = argparse.ArgumentParser()
 argparser.add_argument('--token', '-t', required = True)
 argparser.add_argument('--path', '-p', required = True)
 
-ARGS = argparser.parse_args()
+ARGS = argparser.parse_args()  
 
 STATUSES_MAPPING = {
     'Отправлено письмо': 'Contacted',
@@ -19,7 +19,11 @@ STATUSES_MAPPING = {
     'Отказ': 'Declined'
 }
 
+USELOGS = False
 
+SUCCESS_MESS = 'Succefully added all applicants!'
+
+PROCEEDED = []
 
 DBFILE = 'Тестовая база.xlsx'
 
@@ -59,13 +63,13 @@ def load_candidates_data(path):
         cand_data['money'] = ws.cell(row, field_names['money']).value
         cand_data['comment'] = ws.cell(row, field_names['comment']).value
         cand_data['status'] = STATUSES_IDS_MAPPING[status_api_name]
-        cand_data['first_name'] = name_list[0]
-        cand_data['second_name'] = name_list[1]
+        cand_data['second_name'] = name_list[0]
+        cand_data['first_name'] = name_list[1]
         cand_data['middle_name'] = name_list[2] if len(name_list) == 3 else ''
         # add resume file path if exists
         cand_data['local_file'] = file_path
 
-        cand_data['rejection_reason'] = cand_data['comment'] if status_api_name is 'Declined' else None
+        cand_data['rejection_reason'] = cand_data['comment'] if status_api_name == 'Declined' else None
 
         data.append(cand_data)
         row += 1
@@ -139,12 +143,68 @@ def create_cand_vacancy_data(src_data):
 
     return cand_data
 
+def log(mess):
+
+    with open('logs.txt', 'a', encoding = 'utf8') as f:
+
+            f.write(mess + '\n')
+
+    print(mess)
+
+def clear_log():
+
+    with open('logs.txt', 'w'):
+
+        pass
+
 
 if __name__ == '__main__':
+
+    # check logs
+    if os.path.exists('logs.txt'):
+
+        with open('logs.txt', encoding = 'utf8') as f:
+
+            logs_text = f.read()
+
+        # if last launch was successful clear logs 
+        if re.search(rf'{SUCCESS_MESS}', logs_text):
+
+            clear_log()
+        
+        # otherwise decide whether to use logs or not
+        elif logs_text:
+
+            print('log file found, should I use it?')
+
+            ans = ''
+
+            while ans not in ['y', 'n']:
+
+                ans = input('please, type \'y\' or \'n\': ')
+
+            if ans == 'y':
+
+                proceeded_names = re.findall(r'(?<=\<).+?(?=\>)', logs_text)
+
+                PROCEEDED = [tuple(name.split()) for name in proceeded_names]
+
+            else:
+
+                clear_log()
 
     data = load_candidates_data(ARGS.path)
 
     for cand in data:
+
+        first_name, last_name = cand['first_name'], cand['second_name']
+
+        # check if applpicant is already added
+        if (last_name, first_name) in PROCEEDED:
+
+            print(f'Applicant <{first_name} {last_name}> has already been added to HuntFlow')
+
+            continue
 
         data_from_file = api.upload_resume(cand['local_file'])
 
@@ -183,4 +243,8 @@ if __name__ == '__main__':
 
         vac_data = create_cand_vacancy_data(cand)
 
-        print('Applicant added to a vacancy:', api.add_vacancy_candidate(vac_data))
+        cand_vacancy_info = api.add_vacancy_candidate(vac_data)
+
+        log(f'Applicant <{last_name} {first_name}> added to a vacancy')
+        
+    log(SUCCESS_MESS)
